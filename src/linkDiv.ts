@@ -66,6 +66,18 @@ export default function linkDiv(mainNode: Wrapper) {
     base = 10000 - totalHeight / 2
   }
 
+  let lhsNodes = 0
+  let rhsNodes = 0
+
+  for (let i = 0; i < mainNodeList.length; i++) {
+    const el = mainNodeList[i]
+    if (el.className === 'lhs') {
+      lhsNodes += 1
+    } else {
+      rhsNodes += 1
+    }
+  }
+
   // 2. layout main node, generate main link
   const alignRight = 10000 - root.offsetWidth / 2 - mainNodeHorizontalGap
   const alignLeft = 10000 + root.offsetWidth / 2 + mainNodeHorizontalGap
@@ -118,8 +130,41 @@ export default function linkDiv(mainNode: Wrapper) {
       } else {
         x1 = 10000 + root.offsetWidth / 10 + (1 - pct) * 0.25 * (root.offsetWidth / 2)
       }
-      mainPath = generateMainLine1({ x1, y1, x2, y2 })
+
+      const points = {
+        x1,
+        y1,
+        x2,
+        y2,
+      }
+
+      if (lhsNodes === 1 && el.className === 'lhs') {
+        Object.assign(points, {
+          y2: y1,
+        })
+
+        const top = root.offsetTop + (root.offsetHeight - el.offsetHeight) / 2
+
+        Object.assign(el.style, {
+          top: top + 'px',
+        })
+      }
+
+      if (rhsNodes === 1 && el.className === 'rhs') {
+        Object.assign(points, {
+          y2: y1,
+        })
+
+        const top = root.offsetTop + (root.offsetHeight - el.offsetHeight) / 2
+
+        Object.assign(el.style, {
+          top: top + 'px',
+        })
+      }
+
+      mainPath = generateMainLine1(points)
     }
+
     this.lines.appendChild(createMainPath(mainPath, branchColor))
 
     // set position of expander
@@ -137,6 +182,7 @@ export default function linkDiv(mainNode: Wrapper) {
     if (mainNode && mainNode !== mainNodeList[i]) {
       continue
     }
+
     if (el.childElementCount) {
       const svg = createLinkSvg('subLines')
       // svg tag name is lower case
@@ -163,18 +209,30 @@ export default function linkDiv(mainNode: Wrapper) {
 }
 
 // core function of generate subLines
-const traverseChildren: TraverseChildrenFunc = function (children, parent, isFirst) {
+const traverseChildren = function (children, parent, isFirst?: boolean, delta?: number) {
   let path = ''
   const pT = parent.offsetTop
   const pL = parent.offsetLeft
-  const pW = parent.offsetWidth
+  const pW = parent.offsetWidth + (delta || 0)
   const pH = parent.offsetHeight
+
+  let maxWidth = 0
+
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i] as Wrapper
+    const childT = child.children[0] as Parent
+    const cW = childT.offsetWidth
+    if (cW > maxWidth) {
+      maxWidth = cW
+    }
+  }
+
   for (let i = 0; i < children.length; i++) {
     const child = children[i] as Wrapper
     const childT = child.children[0] as Parent
     const cT = childT.offsetTop
     const cL = childT.offsetLeft
-    const cW = childT.offsetWidth
+    const cW = maxWidth + (delta || 0)
     const cH = childT.offsetHeight
     const direction = child.offsetParent.className
 
@@ -186,7 +244,7 @@ const traverseChildren: TraverseChildrenFunc = function (children, parent, isFir
       if (direction === 'lhs') {
         expander.style.left = 0 + 'px'
       } else if (direction === 'rhs') {
-        expander.style.left = childT.offsetWidth + 'px'
+        expander.style.left = maxWidth + 'px'
       }
       // this property is added in the layout phase
       if (!expander.expanded) continue
@@ -195,9 +253,17 @@ const traverseChildren: TraverseChildrenFunc = function (children, parent, isFir
       continue
     }
 
+    if (child.children[1]) {
+      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // @ts-ignore
+      Object.assign(child.children[1].style, {
+        marginLeft: `${maxWidth - childT.offsetWidth}px`,
+      })
+    }
+
     const nextChildren = child.children[1].children
     if (nextChildren.length > 0) {
-      path += traverseChildren(nextChildren, childT)
+      path += traverseChildren(nextChildren, childT, false, maxWidth - childT.offsetWidth)
     }
   }
   return path
