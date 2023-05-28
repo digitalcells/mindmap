@@ -32,6 +32,18 @@ export default function linkDiv(mainNode: Wrapper) {
   let totalHeightR = 0
   let base: number // start offset
 
+  let lhsNodes = 0
+  let rhsNodes = 0
+
+  for (let i = 0; i < mainNodeList.length; i++) {
+    const el = mainNodeList[i]
+    if (el.className === 'lhs') {
+      lhsNodes += 1
+    } else {
+      rhsNodes += 1
+    }
+  }
+
   if (this.direction === SIDE) {
     let countL = 0
     let countR = 0
@@ -49,13 +61,22 @@ export default function linkDiv(mainNode: Wrapper) {
         countR += 1
       }
     }
+
     if (totalHeightL > totalHeightR) {
       base = 10000 - Math.max(totalHeightL) / 2
       shortSide = 'r'
+      // fix the alignment issues
+      if (rhsNodes % 2) {
+        totalHeightL = totalHeightL - mainNodeVerticalGap
+      }
       shortSideGap = (totalHeightL - totalHeightRWithoutGap) / (countR - 1)
     } else {
       base = 10000 - Math.max(totalHeightR) / 2
       shortSide = 'l'
+      // fix the alignment issues
+      if (lhsNodes % 2) {
+        totalHeightR = totalHeightR - mainNodeVerticalGap
+      }
       shortSideGap = (totalHeightR - totalHeightLWithoutGap) / (countL - 1)
     }
   } else {
@@ -64,18 +85,6 @@ export default function linkDiv(mainNode: Wrapper) {
       totalHeight += el.offsetHeight + mainNodeVerticalGap
     }
     base = 10000 - totalHeight / 2
-  }
-
-  let lhsNodes = 0
-  let rhsNodes = 0
-
-  for (let i = 0; i < mainNodeList.length; i++) {
-    const el = mainNodeList[i]
-    if (el.className === 'lhs') {
-      lhsNodes += 1
-    } else {
-      rhsNodes += 1
-    }
   }
 
   // 2. layout main node, generate main link
@@ -90,10 +99,13 @@ export default function linkDiv(mainNode: Wrapper) {
     const branchColor = el.querySelector('me-tpc').nodeObj.branchColor || palette[i % palette.length]
     const elOffsetH = el.offsetHeight
     if (el.className === 'lhs') {
+      // console.warn('base + currentOffsetL', base, currentOffsetL)
       el.style.top = base + currentOffsetL + 'px'
       el.style.left = alignRight - el.offsetWidth + 'px'
       x2 = alignRight - GAP
       y2 = base + currentOffsetL + elOffsetH / 2
+
+      // console.warn('base + currentOffsetL + elOffsetH', elOffsetH, shortSide)
 
       if (shortSide === 'l') {
         currentOffsetL += elOffsetH + shortSideGap
@@ -101,15 +113,18 @@ export default function linkDiv(mainNode: Wrapper) {
         currentOffsetL += elOffsetH + mainNodeVerticalGap
       }
     } else {
+      console.warn('base + currentOffsetR', base, currentOffsetR, el.offsetHeight)
       el.style.top = base + currentOffsetR + 'px'
       el.style.left = alignLeft + 'px'
       x2 = alignLeft + GAP
       y2 = base + currentOffsetR + elOffsetH / 2
 
+      console.warn('base + currentOffsetR + elOffsetH', elOffsetH, shortSide, shortSideGap)
+
       if (shortSide === 'r') {
         currentOffsetR += elOffsetH + shortSideGap
       } else {
-        currentOffsetR += elOffsetH + mainNodeVerticalGap
+        currentOffsetR += elOffsetH + shortSideGap
       }
     }
 
